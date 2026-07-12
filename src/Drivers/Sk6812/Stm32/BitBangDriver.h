@@ -14,7 +14,7 @@ namespace IntegerRay
 		{
 			namespace Stm32
 			{
-				namespace Detail
+				namespace DetailSk6812
 				{
 					constexpr uint32_t NanosecondsToCycles(const uint32_t nanoseconds)
 					{
@@ -206,10 +206,10 @@ namespace IntegerRay
 				}
 
 				template<uint16_t LedCount, uint8_t OutputPin>
-				using BitBangRgbDriver = Detail::BitBangDriver<IntegerRay::ColorModel::Output::Rgb, LedCount, OutputPin>;
+				using BitBangRgbDriver = DetailSk6812::BitBangDriver<IntegerRay::ColorModel::Output::Grb, LedCount, OutputPin>;
 
 				template<uint16_t LedCount, uint8_t OutputPin>
-				using BitBangRgbwDriver = Detail::BitBangDriver<IntegerRay::ColorModel::Output::Rgbw, LedCount, OutputPin>;
+				using BitBangRgbwDriver = DetailSk6812::BitBangDriver<IntegerRay::ColorModel::Output::Grbw, LedCount, OutputPin>;
 
 			}
 		}

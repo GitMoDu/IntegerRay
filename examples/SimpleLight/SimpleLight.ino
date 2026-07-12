@@ -41,10 +41,9 @@ static constexpr uint8_t LedPin = 3;
 
 // Uncomment one of the following driver types to select the desired strip driver.
 using DriverType = IntegerRay::Drivers::Ws2812b::Avr::BitBangRgbDriver<LedCount, LedPin>;
-//using DriverType = IntegerRay::Drivers::Ws2812b::Avr::SpiRgbDriver<LedCount>;
 //using DriverType = IntegerRay::Drivers::Sk6812::Avr::BitBangRgbwDriver<LedCount, LedPin>;
-////using DriverType = IntegerRay::Drivers::Sk6812::Stm32::BitBangRgbwDriver<LedCount, LedPin>;
-//using DriverType = IntegerRay::Drivers::Sk6812::Stm32::DmaRgbwDriver<LedCount>;
+//using DriverType = IntegerRay::Drivers::Sk6812::Stm32::BitBangRgbwDriver<LedCount, LedPin>;
+//using DriverType = IntegerRay::Drivers::Sk6812::Stm32::SpiDmaRgbwDriver<LedCount>;
 
 // Enable for a driver that transmits asynchronously through SPI/DMA.
 // The selected driver must expose the corresponding SPI callback API.

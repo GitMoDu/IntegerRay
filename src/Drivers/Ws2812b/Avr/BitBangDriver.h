@@ -31,7 +31,7 @@ namespace IntegerRay
 		{
 			namespace Avr
 			{
-				namespace Detail
+				namespace DetailWs2812b
 				{
 					constexpr uint16_t Cycles(
 						const uint16_t nanoseconds,
@@ -173,14 +173,12 @@ namespace IntegerRay
 						SREG = sregPrevious;
 					}
 
-					template<
-						typename ColorType,
-						uint16_t LedCount,
+					template<uint16_t LedCount,
 						uint8_t OutputPin>
 					class BitBangDriver : public IStripDriver
 					{
 					public:
-						using color_t = ColorType;
+						using color_t = IntegerRay::ColorModel::Output::Grb;
 						using component_t =
 							IntegerRay::ColorModel::Output::component_t;
 
@@ -244,8 +242,7 @@ namespace IntegerRay
 
 				template<uint16_t LedCount, uint8_t OutputPin>
 				using BitBangRgbDriver =
-					Detail::BitBangDriver<
-					IntegerRay::ColorModel::Output::Rgb,
+					DetailWs2812b::BitBangDriver<
 					LedCount,
 					OutputPin>;
 			}

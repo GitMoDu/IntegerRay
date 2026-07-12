@@ -154,10 +154,10 @@ namespace IntegerRay
 				}
 
 				template<uint16_t LedCount>
-				using DmaRgbDriver = Detail::SpiDmaDriver<IntegerRay::ColorModel::Output::Rgb, LedCount>;
+				using SpiDmaRgbDriver = Detail::SpiDmaDriver<IntegerRay::ColorModel::Output::Grb, LedCount>;
 
 				template<uint16_t LedCount>
-				using DmaRgbwDriver = Detail::SpiDmaDriver<IntegerRay::ColorModel::Output::Sk6812Rgbw, LedCount>;
+				using SpiDmaRgbwDriver = Detail::SpiDmaDriver<IntegerRay::ColorModel::Output::Grbw, LedCount>;
 			}
 		}
 	}
