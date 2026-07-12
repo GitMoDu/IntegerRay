@@ -60,13 +60,6 @@ namespace IntegerRay
 				using color_t = uint32_t;
 				static constexpr uint8_t CHANNEL_COUNT = RGB_CHANNEL_COUNT;
 
-				/*static constexpr color_t Pack(const Internal::color_t color)
-				{
-					return (color_t(color.red) << 16)
-						| (uint16_t(color.green) << 8)
-						| color.blue;
-				}*/
-
 				static constexpr color_t Pack(const Internal::color_t color)
 				{
 					return (color_t(Component(color.red)) << 16)
@@ -220,13 +213,6 @@ namespace IntegerRay
 						| (blue - white);
 				}
 			};
-
-			using Ws2812 = Grb;
-			using Neopixel = Grb;
-			using Sk6812Rgb = Grb;
-			using Sk6812Rgbw = Grbw;
-
-
 		}
 	}
 
@@ -235,6 +221,12 @@ namespace IntegerRay
 
 	// Expose internal color model component type.
 	using component_t = ColorModel::Internal::component_t;
+
+	static constexpr component_t COMPONENT_MAX = ColorModel::Internal::COMPONENT_MAX;
+
+	static constexpr color_t COLOR_WHITE = ColorModel::Internal::WHITE;
+
+	static constexpr color_t COLOR_BLACK = ColorModel::Internal::BLACK;
 
 
 	/// <summary>
