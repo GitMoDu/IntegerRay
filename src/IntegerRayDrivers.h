@@ -7,6 +7,7 @@
 #include "Drivers/Sk6812/Stm32/BitBangDriver.h"
 #include "Drivers/Sk6812/Stm32/DmaDriver.h"
 
+#include "Drivers/Ws2812b/Avr/BitBangDriver.h"
 
 
 #endif
