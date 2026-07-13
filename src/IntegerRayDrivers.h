@@ -3,11 +3,14 @@
 
 // SK6812 RGB(W) template driver.
 #include "Drivers/Sk6812/Avr/BitBangDriver.h"
+#include "Drivers/Sk6812/Avr/SpiDriver.h"
 
 #include "Drivers/Sk6812/Stm32/BitBangDriver.h"
 #include "Drivers/Sk6812/Stm32/DmaDriver.h"
 
 #include "Drivers/Ws2812b/Avr/BitBangDriver.h"
+#include "Drivers/Ws2812b/Avr/SpiDriver.h"
+
 
 
 #endif

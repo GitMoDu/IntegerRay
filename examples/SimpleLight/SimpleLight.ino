@@ -40,10 +40,15 @@ static constexpr uint16_t LedCount = 15;
 static constexpr uint8_t LedPin = 3;
 
 // Uncomment one of the following driver types to select the desired strip driver.
-using DriverType = IntegerRay::Drivers::Ws2812b::Avr::BitBangRgbDriver<LedCount, LedPin>;
+using DriverType = IntegerRay::Drivers::Ws2812b::Avr::BitBangRgbDriver<LedCount, LedPin>; // Bit-bang outputs to any GPIO pin.
+//using DriverType = IntegerRay::Drivers::Ws2812b::Avr::Spi8MhzRgbDriver<LedCount>; // 8 MHz SPI; available on a 16 MHz AVR only.
+//using DriverType = IntegerRay::Drivers::Ws2812b::Avr::Spi2MhzRgbDriver<LedCount>; // 2 MHz SPI; available on 8 MHz and 16 MHz AVRs.
 //using DriverType = IntegerRay::Drivers::Sk6812::Avr::BitBangRgbwDriver<LedCount, LedPin>;
-//using DriverType = IntegerRay::Drivers::Sk6812::Stm32::BitBangRgbwDriver<LedCount, LedPin>;
-//using DriverType = IntegerRay::Drivers::Sk6812::Stm32::SpiDmaRgbwDriver<LedCount>;
+//using DriverType = IntegerRay::Drivers::Sk6812::Avr::Spi8MhzRgbwDriver<LedCount>; // 8 MHz SPI; available on a 16 MHz AVR only.
+//using DriverType = IntegerRay::Drivers::Sk6812::Avr::Spi2MhzRgbwDriver<LedCount>; // 2 MHz SPI; available on 8 MHz and 16 MHz AVRs.
+//using DriverType = IntegerRay::Drivers::Sk6812::Stm32::BitBangRgbwDriver<LedCount, LedPin>; // Bit-bang outputs to any GPIO pin.
+//using DriverType = IntegerRay::Drivers::Sk6812::Stm32::SpiDmaRgbwDriver<LedCount>; // SPI-DMA driver, requires USE_SPI_ASYNC defined, available on STM32 boards only.
+
 
 // Enable for a driver that transmits asynchronously through SPI/DMA.
 // The selected driver must expose the corresponding SPI callback API.
