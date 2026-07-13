@@ -213,6 +213,55 @@ namespace IntegerRay
 						| (blue - white);
 				}
 			};
+
+			/// <summary>
+			/// Intensity, blue, green, red byte order with shared white removed from RGB.
+			/// APA102 standard BGR byte order utilizing dynamic Global Current scaling.
+			/// </summary>
+			struct Ibgr
+			{
+				using color_t = uint32_t;
+				static constexpr uint8_t CHANNEL_COUNT = 4;
+
+				static inline color_t Pack(const Internal::color_t color)
+				{
+					// Find peak component value to maximize the global current envelope range
+					const uint16_t max_val = IntegerSignal::MaxValue(IntegerSignal::MaxValue(color.red, color.green), color.blue);
+					using Scalar = IntegerSignal::FixedPoint::ScalarFraction::UFraction16;
+
+					if (max_val == 0)
+					{
+						// Return base frame markers with entirely dark channels
+						return color_t(0xE0) << 24;
+					}
+
+					// 1. Map the maximum channel value into the 5-bit global range (1 to 31)
+					uint8_t g_step = Scalar::Fraction(max_val, uint8_t(31));
+					g_step = IntegerSignal::MaxValue(g_step, uint8_t(1));
+
+					// 2. Compute the exact scale ceiling for the chosen global register setting
+					// This acts as the scalar denominator for our normalization step
+					const uint16_t scalar_denominator = Scalar::Fraction(Scalar::GetScalar<uint8_t>(g_step, uint8_t(31)), Internal::COMPONENT_MAX);
+
+					// 3. Upscale components into the maximum resolution boundaries of the 8-bit space
+					const uint8_t r_8 = Scalar::Fraction(
+						Scalar::GetScalar<uint16_t>(color.red, scalar_denominator), uint8_t(UINT8_MAX));
+					const uint8_t g_8 = Scalar::Fraction(
+						Scalar::GetScalar<uint16_t>(color.green, scalar_denominator), uint8_t(UINT8_MAX));
+					const uint8_t b_8 = Scalar::Fraction(
+						Scalar::GetScalar<uint16_t>(color.blue, scalar_denominator), uint8_t(UINT8_MAX));
+
+					// 4. Pack directly into a 32-bit word matching ConvertBuffer's extraction order
+					// channel 0 (shift 24) = Global (with 11100000 marker configuration)
+					// channel 1 (shift 16) = Blue
+					// channel 2 (shift 8)  = Green
+					// channel 3 (shift 0)  = Red
+					return (color_t(0xE0 | g_step) << 24)
+						| (color_t(b_8) << 16)
+						| (uint16_t(g_8) << 8)
+						| r_8;
+				}
+			};
 		}
 	}
 
