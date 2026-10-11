@@ -8,12 +8,13 @@
 #include "Model/Interface.h"
 
 
-
 // Engine for managing buffers, animators, and drivers.
 #include "Engine/RayBuffer.h"
 #include "Engine/RayEngine.h"
 
-
-
+// Animation framework.
+#include "Framework/Animation/Model.h"
+#include "Framework/Animation/Curves.h"
+#include "Framework/Animation/LambdaAnimator.h"
 
 #endif
