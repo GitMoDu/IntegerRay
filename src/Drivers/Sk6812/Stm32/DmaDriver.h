@@ -92,7 +92,7 @@ namespace IntegerRay
 						}
 
 					private:
-						static inline uint32_t PeripheralClock(SPIClass& spi)
+						static uint32_t PeripheralClock(SPIClass& spi)
 						{
 							switch (rcc_dev_clk(spi.c_dev()->clk_id))
 							{
@@ -107,7 +107,7 @@ namespace IntegerRay
 							}
 						}
 
-						static inline uint32_t ClockDivider(SPIClass& spi)
+						static uint32_t ClockDivider(SPIClass& spi)
 						{
 							// This SPI API expresses divisors as 2^(index + 1).
 							// Select the fastest supported divisor that does not exceed
@@ -124,7 +124,7 @@ namespace IntegerRay
 							return index << 3;
 						}
 
-						static inline void EncodeByte(uint8_t*& output, const uint8_t value)
+						static void EncodeByte(uint8_t*& output, const uint8_t value)
 						{
 							uint32_t encoded = 0;
 
@@ -139,7 +139,7 @@ namespace IntegerRay
 							*output++ = uint8_t(encoded);
 						}
 
-						static inline void Encode(const ColorModel::Output::component_t* input, const size_t inputLength, uint8_t* output)
+						static void Encode(const ColorModel::Output::component_t* input, const size_t inputLength, uint8_t* output)
 						{
 							*output++ = 0;
 
