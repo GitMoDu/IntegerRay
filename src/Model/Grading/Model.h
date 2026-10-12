@@ -18,7 +18,7 @@ namespace IntegerRay
 			};
 
 			template<typename Pipeline>
-			class ColorGraderAdapter : public Pipeline, public IColorGrader
+			class ColorGraderAdapter : public IColorGrader, public Pipeline
 			{
 			public:
 				ColorGraderAdapter()
