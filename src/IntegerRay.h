@@ -3,7 +3,6 @@
 
 // IntegerRay depends on IntegerSignal https://github.com/GitMoDu/IntegerSignal
 #include "Model/ColorModel.h"
-#include "Model/ReferenceWhites.h"
 
 // Library interfaces for drivers, buffers, and animators.
 #include "Model/Interface.h"
@@ -21,5 +20,16 @@
 #include "Framework/Animation/Animator.h"
 #include "Framework/Animation/LambdaAnimator.h"
 #include "Framework/Animation/FieldAnimator.h"
+
+// Constants for reference white points and color grading.
+#include "Model/ReferenceWhites.h"
+
+// Color grading stages.
+#include "Model/Grading/Model.h"
+#include "Model/Grading/HueShift.h"
+#include "Model/Grading/Brightness.h"
+#include "Model/Grading/Contrast.h"
+#include "Model/Grading/Gamma.h"
+#include "Model/Grading/RedBlueBalance.h"
 
 #endif

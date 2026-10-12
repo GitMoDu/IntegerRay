@@ -53,6 +53,24 @@ namespace IntegerRay
 
 			IStripDriver& Driver;
 			uint32_t TargetDuration;
+			const ColorModel::Grading::IColorGrader* Grader = nullptr;
+
+		private:
+			void ConvertGradedBuffer()
+			{
+				for (uint16_t index = 0; index < Count; index++)
+				{
+					const ColorModel::Internal::color_t gradedColor = Grader->Grade(DrawBuffer.Buffer[index], index);
+					const typename format_t::color_t nativeColor = format_t::Pack(gradedColor);
+					const size_t offset = size_t(index) * format_t::CHANNEL_COUNT;
+
+					for (uint8_t channel = 0; channel < format_t::CHANNEL_COUNT; channel++)
+					{
+						const uint8_t shift = (format_t::CHANNEL_COUNT - 1 - channel) << 3;
+						NativeBuffer[offset + channel] = ColorModel::Output::component_t(nativeColor >> shift);
+					}
+				}
+			}
 
 		public:
 			TemplateRayEngine(TS::Scheduler& scheduler,
@@ -82,6 +100,16 @@ namespace IntegerRay
 			void SetTargetPeriod(const uint32_t targetPeriodMicros)
 			{
 				TargetDuration = targetPeriodMicros;
+			}
+
+			void SetColorGrader(const ColorModel::Grading::IColorGrader* grader)
+			{
+				Grader = grader;
+			}
+
+			void SetColorGrader(const ColorModel::Grading::IColorGrader& grader)
+			{
+				Grader = &grader;
 			}
 
 			void Start(IRayDrawer* drawer)
@@ -149,7 +177,14 @@ namespace IntegerRay
 					break;
 				case StateEnum::BufferSwap:
 					// Convert the animation results in the DrawBuffer to the native color buffer for the driver to push to the lights.
-					ConvertBuffer<format_t>(DrawBuffer.Buffer, NativeBuffer, Count);
+					if (Grader != nullptr)
+					{
+						ConvertGradedBuffer();
+					}
+					else
+					{
+						ConvertBuffer<format_t>(DrawBuffer.Buffer, NativeBuffer, Count);
+					}
 					State = StateEnum::SyncPush;
 					TS::Task::delay(0);
 					break;

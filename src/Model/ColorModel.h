@@ -35,6 +35,19 @@ namespace IntegerRay
 			}
 		}
 
+		namespace Grading
+		{
+			/// <summary>
+			/// Transforms an internal high-precision color before native output conversion.
+			/// </summary>
+			struct IColorGrader
+			{
+				virtual ~IColorGrader() = default;
+
+				virtual Internal::color_t Grade(const Internal::color_t color, const uint16_t pixelIndex) const = 0;
+			};
+		}
+
 		namespace Output
 		{
 			/// <summary>
