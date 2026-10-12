@@ -6,8 +6,6 @@
 
 
 //#define DEBUG
-//#define DEBUG_ANIMATION
-//#define DEBUG_MOCK_BUTTON
 #define SERIAL_BAUD_RATE 115200
 
 // Using Archipenko's TaskScheduler library for Arduino.
@@ -77,7 +75,7 @@ MockButtonTask MockButton(SchedulerBase, StateController);
 
 void setup()
 {
-#if defined(DEBUG) || defined(DEBUG_ANIMATION) || defined(DEBUG_MOCK_BUTTON)
+#if defined(DEBUG)
 	Serial.begin(SERIAL_BAUD_RATE);
 	while (!Serial)
 		;;

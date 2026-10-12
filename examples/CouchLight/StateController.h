@@ -57,7 +57,7 @@ public:
 		TS::Task::disable();
 	}
 
-	void SimulateShortPress()
+	void AdvanceLightState()
 	{
 		CurrentState = static_cast<CouchLight::LightStateEnum>((static_cast<uint8_t>(CurrentState) + 1) % static_cast<uint8_t>(CouchLight::LightStateEnum::EnumCount));
 
@@ -89,7 +89,7 @@ public:
 		{
 			if (Parser.HasShortEvent)
 			{
-				SimulateShortPress();
+				AdvanceLightState();
 			}
 			else if (Parser.HasLongEvent)
 			{

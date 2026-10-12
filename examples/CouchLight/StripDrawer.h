@@ -17,12 +17,6 @@ private:
 	IntegerRay::component_t FilterEnd = 0;
 	IntegerRay::component_t WhiteBlend = 0;
 	LightStateEnum LightState = LightStateEnum::Off;
-
-#if defined(DEBUG_ANIMATION)
-	uint32_t DebugTransitionTimestamp = 0;
-	uint32_t DebugLastLogTimestamp = 0;
-#endif
-
 	IntegerRay::Animation::FieldAnimator<IntegerRay::component_t> AnimatorSaturation;
 	IntegerRay::Animation::FieldAnimator<IntegerRay::component_t> AnimatorBrightness;
 	IntegerRay::Animation::FieldAnimator<IntegerRay::component_t> AnimatorFilterEnd;
@@ -44,20 +38,6 @@ public:
 	{
 		if (LightState != lightState)
 		{
-#if defined(DEBUG_ANIMATION)
-			DebugTransitionTimestamp = micros();
-			DebugLastLogTimestamp = 0;
-			Serial.print(F("Strip state="));
-			Serial.print(static_cast<uint8_t>(lightState));
-			Serial.print(F(" start(s,b,f,w)="));
-			Serial.print(SaturationValue);
-			Serial.print(',');
-			Serial.print(BrightnessValue);
-			Serial.print(',');
-			Serial.print(FilterEnd);
-			Serial.print(',');
-			Serial.println(WhiteBlend);
-#endif
 			const bool wasOff = (LightState == LightStateEnum::Off);
 
 			AnimatorSaturation.Stop();
@@ -114,44 +94,6 @@ public:
 		const IntegerSignal::Trigonometry::angle_t hueOffset = IntegerSignal::FixedPoint::ScalarFraction::UFraction32::Fraction(progress, IntegerSignal::Trigonometry::ANGLE_RANGE);
 
 		const uint16_t count = buffer.GetCount();
-
-#if defined(DEBUG_ANIMATION)
-		if ((timestamp - DebugTransitionTimestamp) <= CouchLight::AnimationToOn::Duration
-			&& (DebugLastLogTimestamp == 0 || (timestamp - DebugLastLogTimestamp) >= 100000))
-		{
-			DebugLastLogTimestamp = timestamp;
-			Serial.print(F("Strip t="));
-			Serial.print(timestamp - DebugTransitionTimestamp);
-			Serial.print(F(" (s,b,f,w)="));
-			Serial.print(SaturationValue);
-			Serial.print(',');
-			Serial.print(BrightnessValue);
-			Serial.print(',');
-			Serial.print(FilterEnd);
-			Serial.print(',');
-			Serial.print(WhiteBlend);
-
-			const IntegerSignal::Trigonometry::angle_t p0Hue = hueOffset;
-			IntegerRay::color_t p0Color = IntegerSignal::RgbFraction16::ColorHsv(p0Hue, SaturationValue, BrightnessValue);
-			const IntegerRay::component_t p0Filter = GetFilterAt(0, count);
-			p0Color.red = IntegerSignal::FixedPoint::ScalarFraction::UFraction16::Fraction(p0Filter, p0Color.red);
-			p0Color.green = IntegerSignal::FixedPoint::ScalarFraction::UFraction16::Fraction(p0Filter, p0Color.green);
-			p0Color.blue = IntegerSignal::FixedPoint::ScalarFraction::UFraction16::Fraction(p0Filter, p0Color.blue);
-			if (WhiteBlend > 0)
-			{
-				p0Color = IntegerSignal::RgbFraction16::ColorInterpolate(p0Color, CouchLight::AnimationToWhiteLighting::ColorValue, WhiteBlend);
-			}
-			const uint32_t grbw = IntegerRay::ColorModel::Output::Grbw::Pack(p0Color);
-			Serial.print(F(" p0(G,R,B,W)="));
-			Serial.print(uint8_t(grbw >> 24));
-			Serial.print(',');
-			Serial.print(uint8_t(grbw >> 16));
-			Serial.print(',');
-			Serial.print(uint8_t(grbw >> 8));
-			Serial.print(',');
-			Serial.println(uint8_t(grbw));
-		}
-#endif
 		for (uint16_t index = 0; index < count; ++index)
 		{
 			const IntegerSignal::FixedPoint::ScalarFraction::ufraction16_t indexProgress = IntegerSignal::FixedPoint::ScalarFraction::UFraction16::GetScalar<uint32_t>(

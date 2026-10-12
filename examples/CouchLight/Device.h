@@ -6,9 +6,9 @@
 
 namespace Device
 {
+	// Capacitive touch button pin. The button is active high, so it is pulled low when not pressed.
 	namespace Button
 	{
-		//static constexpr uint8_t Pin = 8;
 		static constexpr uint8_t Pin = PA3;
 	}
 
@@ -30,6 +30,7 @@ namespace Device
 
 	namespace Display
 	{
+		// Target period for the lights update loop in microseconds. This is used to calculate the target frame rate.
 		static constexpr uint32_t TargetPeriodMicros = 4000;
 
 
