@@ -3,6 +3,7 @@
 
 // IntegerRay depends on IntegerSignal https://github.com/GitMoDu/IntegerSignal
 #include "Model/ColorModel.h"
+#include "Model/ReferenceWhites.h"
 
 // Library interfaces for drivers, buffers, and animators.
 #include "Model/Interface.h"
