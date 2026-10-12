@@ -23,17 +23,19 @@ private:
 	uint32_t DebugLastLogTimestamp = 0;
 #endif
 
-	IntegerRay::Animation::LambdaAnimator<IntegerRay::component_t> AnimatorSaturation{};
-	IntegerRay::Animation::LambdaAnimator<IntegerRay::component_t> AnimatorBrightness{};
-	IntegerRay::Animation::LambdaAnimator<IntegerRay::component_t> AnimatorFilterEnd{};
-	IntegerRay::Animation::LambdaAnimator<IntegerRay::component_t> AnimatorWhiteBlend{};
+	IntegerRay::Animation::FieldAnimator<IntegerRay::component_t> AnimatorSaturation;
+	IntegerRay::Animation::FieldAnimator<IntegerRay::component_t> AnimatorBrightness;
+	IntegerRay::Animation::FieldAnimator<IntegerRay::component_t> AnimatorFilterEnd;
+	IntegerRay::Animation::FieldAnimator<IntegerRay::component_t> AnimatorWhiteBlend;
 
 public:
 	StripDrawer()
 		: IntegerRay::IRayDrawer()
-	{
-		SetupAnimators();
-	}
+		, AnimatorSaturation(SaturationValue)
+		, AnimatorBrightness(BrightnessValue)
+		, AnimatorFilterEnd(FilterEnd)
+		, AnimatorWhiteBlend(WhiteBlend)
+	{}
 
 
 	~StripDrawer() = default;
@@ -65,51 +67,34 @@ public:
 			switch (lightState)
 			{
 			case LightStateEnum::ColoredDim:
-				AnimatorSaturation.SetDuration(CouchLight::AnimationToColoredDim::Duration);
-				AnimatorBrightness.SetDuration(CouchLight::AnimationToColoredDim::Duration);
-				AnimatorWhiteBlend.SetDuration(CouchLight::AnimationToColoredDim::Duration);
-
-				AnimatorSaturation.Start(CouchLight::AnimationToColoredDim::SaturationValue, SaturationValue);
-				AnimatorBrightness.Start(CouchLight::AnimationToColoredDim::BrightnessValue, BrightnessValue);
-				AnimatorWhiteBlend.Start(0, WhiteBlend);
+				AnimatorSaturation.AnimateTo(CouchLight::AnimationToColoredDim::Duration, CouchLight::AnimationToColoredDim::SaturationValue);
+				AnimatorBrightness.AnimateTo(CouchLight::AnimationToColoredDim::Duration, CouchLight::AnimationToColoredDim::BrightnessValue);
+				AnimatorWhiteBlend.AnimateTo(CouchLight::AnimationToColoredDim::Duration, 0);
 				break;
 			case LightStateEnum::ColoredBright:
-				AnimatorSaturation.SetDuration(CouchLight::AnimationToColoredBright::Duration);
-				AnimatorBrightness.SetDuration(CouchLight::AnimationToColoredBright::Duration);
-				AnimatorWhiteBlend.SetDuration(CouchLight::AnimationToColoredBright::Duration);
-
-				AnimatorSaturation.Start(CouchLight::AnimationToColoredBright::SaturationValue, SaturationValue);
-				AnimatorBrightness.Start(CouchLight::AnimationToColoredBright::BrightnessValue, BrightnessValue);
-				AnimatorWhiteBlend.Start(0, WhiteBlend);
+				AnimatorSaturation.AnimateTo(CouchLight::AnimationToColoredBright::Duration, CouchLight::AnimationToColoredBright::SaturationValue);
+				AnimatorBrightness.AnimateTo(CouchLight::AnimationToColoredBright::Duration, CouchLight::AnimationToColoredBright::BrightnessValue);
+				AnimatorWhiteBlend.AnimateTo(CouchLight::AnimationToColoredBright::Duration, 0);
 				break;
 			case LightStateEnum::WhiteLighting:
-				AnimatorSaturation.SetDuration(CouchLight::AnimationToWhiteLighting::Duration);
-				AnimatorBrightness.SetDuration(CouchLight::AnimationToWhiteLighting::Duration);
-				AnimatorWhiteBlend.SetDuration(CouchLight::AnimationToWhiteLighting::Duration);
-
-				AnimatorSaturation.Start(CouchLight::AnimationToWhiteLighting::SaturationValue, SaturationValue);
-				AnimatorBrightness.Start(CouchLight::AnimationToWhiteLighting::BrightnessValue, BrightnessValue);
-				AnimatorWhiteBlend.Start(IntegerRay::ColorModel::Internal::COMPONENT_MAX, WhiteBlend);
+				AnimatorSaturation.AnimateTo(CouchLight::AnimationToWhiteLighting::Duration, CouchLight::AnimationToWhiteLighting::SaturationValue);
+				AnimatorBrightness.AnimateTo(CouchLight::AnimationToWhiteLighting::Duration, CouchLight::AnimationToWhiteLighting::BrightnessValue);
+				AnimatorWhiteBlend.AnimateTo(CouchLight::AnimationToWhiteLighting::Duration, IntegerRay::ColorModel::Internal::COMPONENT_MAX);
 				break;
 			case LightStateEnum::Off:
 			default:
 				AnimatorFilterEnd.Stop();
-				AnimatorSaturation.SetDuration(CouchLight::AnimationToOff::Duration);
-				AnimatorBrightness.SetDuration(CouchLight::AnimationToOff::Duration);
-				AnimatorWhiteBlend.SetDuration(CouchLight::AnimationToOff::Duration);
-				AnimatorFilterEnd.SetDuration(CouchLight::AnimationToOff::Duration);
-				AnimatorSaturation.Start(CouchLight::AnimationToOff::SaturationValue, SaturationValue);
-				AnimatorBrightness.Start(CouchLight::AnimationToOff::BrightnessValue, BrightnessValue);
-				AnimatorWhiteBlend.Start(0, WhiteBlend);
-				AnimatorFilterEnd.Start(0, FilterEnd);
+				AnimatorSaturation.AnimateTo(CouchLight::AnimationToOff::Duration, CouchLight::AnimationToOff::SaturationValue);
+				AnimatorBrightness.AnimateTo(CouchLight::AnimationToOff::Duration, CouchLight::AnimationToOff::BrightnessValue);
+				AnimatorWhiteBlend.AnimateTo(CouchLight::AnimationToOff::Duration, 0);
+				AnimatorFilterEnd.AnimateTo(CouchLight::AnimationToOff::Duration, 0);
 				break;
 			}
 
 			if (wasOff && lightState != LightStateEnum::Off)
 			{
 				AnimatorFilterEnd.Stop();
-				AnimatorFilterEnd.SetDuration(CouchLight::AnimationToOn::Duration);
-				AnimatorFilterEnd.Start(IntegerRay::ColorModel::Internal::COMPONENT_MAX, FilterEnd);
+				AnimatorFilterEnd.AnimateTo(CouchLight::AnimationToOn::Duration, IntegerRay::ColorModel::Internal::COMPONENT_MAX);
 			}
 
 			LightState = lightState;
@@ -192,34 +177,6 @@ public:
 	}
 
 private:
-	void SetupAnimators()
-	{
-		AnimatorSaturation.SetStepCallback(this,
-			[](void* context, const uint32_t /*elapsed*/, const IntegerRay::component_t value, const IntegerRay::Animation::scalar_t /*progress*/)
-			{
-				static_cast<StripDrawer*>(context)->SaturationValue = value;
-			}
-		);
-		AnimatorBrightness.SetStepCallback(this,
-			[](void* context, const uint32_t /*elapsed*/, const IntegerRay::component_t value, const IntegerRay::Animation::scalar_t /*progress*/)
-			{
-				static_cast<StripDrawer*>(context)->BrightnessValue = value;
-			}
-		);
-		AnimatorFilterEnd.SetStepCallback(this,
-			[](void* context, const uint32_t /*elapsed*/, const IntegerRay::component_t value, const IntegerRay::Animation::scalar_t /*progress*/)
-			{
-				static_cast<StripDrawer*>(context)->FilterEnd = value;
-			}
-		);
-		AnimatorWhiteBlend.SetStepCallback(this,
-			[](void* context, const uint32_t /*elapsed*/, const IntegerRay::component_t value, const IntegerRay::Animation::scalar_t /*progress*/)
-			{
-				static_cast<StripDrawer*>(context)->WhiteBlend = value;
-			}
-		);
-	}
-
 	IntegerRay::component_t GetFilterAt(const uint16_t index, const uint16_t count)
 	{
 		const IntegerSignal::FixedPoint::ScalarFraction::ufraction16_t indexProgress = IntegerSignal::FixedPoint::ScalarFraction::UFraction16::GetScalar<uint32_t>(
