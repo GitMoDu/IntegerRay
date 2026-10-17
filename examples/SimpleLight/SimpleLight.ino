@@ -1,12 +1,12 @@
 /*
  * IntegerRay SimpleLight
  *
- * Minimal example for driving an RGB or RGBW SK6812-compatible LED strip
- * with a generated animation.
+   * Minimal example for driving an RGB or RGBW addressable LED strip
+ * with a generated animation through an Inertia or Adafruit NeoPixel adapter.
  *
  * Required hardware:
  * - A supported Arduino-compatible board.
- * - An RGB/RGBW SK6812-compatible strip or pixel chain.
+   * - An RGB/RGBW strip or pixel chain supported by the selected driver.
  * - A suitable external power supply for the strip.
  * - A shared ground between the board and the strip power supply.
  * - A short data connection from LedPin to the strip data input.
@@ -27,8 +27,23 @@
 #include <TScheduler.hpp>
 
 
-#include <IntegerRay.h>
-#include <IntegerRayDrivers.h>
+// Select exactly one IntegerRay driver adapter and output format.
+#define SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB
+//#define SIMPLELIGHT_ADAPTER_ADAFRUIT_RGBW
+//#define SIMPLELIGHT_ADAPTER_INERTIA_RGB
+//#define SIMPLELIGHT_ADAPTER_INERTIA_RGBW
+
+#if (defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB) + defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGBW) \
+	+ defined(SIMPLELIGHT_ADAPTER_INERTIA_RGB) + defined(SIMPLELIGHT_ADAPTER_INERTIA_RGBW)) != 1
+#error Select exactly one SimpleLight adapter option.
+#endif
+
+#if defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB) || defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGBW)
+#include <Adafruit_NeoPixel.h>
+#include <IntegerRayAdafruit.h>
+#else
+#include <IntegerRayInertia.h>
+#endif
 
 #include "SimpleAnimator.h"
 
@@ -37,26 +52,35 @@ static constexpr uint16_t LedCount = 15;
 
 // Data output pin used by bit-bang drivers. DMA/SPI drivers use the selected
 // SPI peripheral's MOSI pin instead.
-static constexpr uint8_t LedPin = 3;
+static constexpr uint8_t LedPin = 11;
 
-// Uncomment one of the following driver types to select the desired strip driver.
-using DriverType = IntegerRay::Drivers::Ws2812b::Avr::BitBangRgbDriver<LedCount, LedPin>; // Bit-bang outputs to any GPIO pin.
-//using DriverType = IntegerRay::Drivers::Ws2812b::Avr::Spi8MhzRgbDriver<LedCount>; // 8 MHz SPI; available on a 16 MHz AVR only.
-//using DriverType = IntegerRay::Drivers::Ws2812b::Avr::Spi2MhzRgbDriver<LedCount>; // 2 MHz SPI; available on 8 MHz and 16 MHz AVRs.
-//using DriverType = IntegerRay::Drivers::Sk6812::Avr::BitBangRgbwDriver<LedCount, LedPin>;
-//using DriverType = IntegerRay::Drivers::Sk6812::Avr::Spi8MhzRgbwDriver<LedCount>; // 8 MHz SPI; available on a 16 MHz AVR only.
-//using DriverType = IntegerRay::Drivers::Sk6812::Avr::Spi2MhzRgbwDriver<LedCount>; // 2 MHz SPI; available on 8 MHz and 16 MHz AVRs.
-//using DriverType = IntegerRay::Drivers::Sk6812::Stm32::BitBangRgbwDriver<LedCount, LedPin>; // Bit-bang outputs to any GPIO pin.
-//using DriverType = IntegerRay::Drivers::Sk6812::Stm32::SpiDmaRgbwDriver<LedCount>; // SPI-DMA driver, requires USE_SPI_ASYNC defined, available on STM32 boards only.
-
-
-// Enable for a driver that transmits asynchronously through SPI/DMA.
-// The selected driver must expose the corresponding SPI callback API.
-//#define USE_SPI_ASYNC
-
-// Some drivers accept constructor parameters and some require additional
-// setup, such as SPI initialization or a transfer-completion callback.
-DriverType StripDriver{};
+#if defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB)
+using DriverType = IntegerRay::Adapters::Adafruit::NeoPixelDriver<
+	Adafruit_NeoPixel, IntegerRay::ColorModel::Output::Grb, LedCount, 1, 0, 2>;
+Adafruit_NeoPixel HardwareStrip(LedCount, LedPin, NEO_GRB + NEO_KHZ800);
+DriverType StripDriver(HardwareStrip);
+#elif defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGBW)
+using DriverType = IntegerRay::Adapters::Adafruit::NeoPixelDriver<
+	Adafruit_NeoPixel, IntegerRay::ColorModel::Output::Grbw, LedCount, 1, 0, 2, 3>;
+Adafruit_NeoPixel HardwareStrip(LedCount, LedPin, NEO_GRBW + NEO_KHZ800);
+DriverType StripDriver(HardwareStrip);
+#elif defined(SIMPLELIGHT_ADAPTER_INERTIA_RGB)
+using HardwareDriverType = Inertia::Drivers::Light::LedStrip::Ws2812b::Avr::BitBangDriver<LedPin, LedCount>;
+using DriverType = IntegerRay::Adapters::Inertia::StripDriver<HardwareDriverType,
+	IntegerRay::Adapters::Inertia::IntegerRayFormat::Rgb,
+	Inertia::Drivers::Light::LedStrip::Ws2812b::OutputFormat::Grb,
+	LedCount>;
+HardwareDriverType HardwareStrip{};
+DriverType StripDriver(HardwareStrip);
+#elif defined(SIMPLELIGHT_ADAPTER_INERTIA_RGBW)
+using HardwareDriverType = Inertia::Drivers::Light::LedStrip::Sk6812::Avr::BitBangRgbwDriver<LedPin, LedCount>;
+using DriverType = IntegerRay::Adapters::Inertia::StripDriver<HardwareDriverType,
+	IntegerRay::Adapters::Inertia::IntegerRayFormat::Rgbw,
+	IntegerRay::Adapters::Inertia::OutputFormat::Rgbw,
+	LedCount>;
+HardwareDriverType HardwareStrip{};
+DriverType StripDriver(HardwareStrip);
+#endif
 
 // Native color type determines the channel count and color layout used by the
 // animation engine. RGBW drivers allocate four channels per pixel.
@@ -78,7 +102,6 @@ IntegerRay::Engine::TemplateRayEngine<strip_color_t, LedCount> RayEngine(
 SimpleAnimator Animator{};
 
 inline void halt();
-inline void OnStripTransmitComplete();
 
 
 void setup()
@@ -91,12 +114,6 @@ void setup()
 	delay(1000);
 #endif
 
-#if defined(USE_SPI_ASYNC)
-	// Initialize the shared SPI peripheral before registering the completion
-	// callback used by asynchronous DMA transfers.
-	SPI.begin();
-#endif
-
 	// Initialize the selected strip driver before starting the render engine.
 	if (!StripDriver.Setup())
 	{
@@ -105,9 +122,6 @@ void setup()
 #endif
 		halt();
 	}
-#if defined(USE_SPI_ASYNC)
-	SPI.onTransmit(OnStripTransmitComplete);
-#endif
 
 	// Initialize the engine and attach the animation implementation.
 	if (!RayEngine.Setup())
@@ -140,10 +154,3 @@ void halt()
 	}
 }
 
-void OnStripTransmitComplete()
-{
-#if defined(USE_SPI_ASYNC)
-	// DMA drivers clear their busy state here.
-	StripDriver.HandleTransmitComplete();
-#endif
-}

@@ -21,25 +21,19 @@ namespace IntegerRay
 			uint16_t Count>
 		class TemplateRayEngine : private TS::Task
 		{
-		public:
-			static constexpr size_t NativeBufferSize = size_t(Count) * sizeof(ColorModel::Output::component_t) * format_t::CHANNEL_COUNT;
-
-		private:
 			enum class StateEnum
 			{
-				Initializing,	// Clears all buffers and sets all lights to off/black.
-				BufferClear,	// Clears current drawing buffer to black/off. Placed between driver push and wait, to take advantage of asynchronous driver push to clear buffer.
-				BufferRender,	// Draws the current buffer to the lights.
-				BufferSwap,		// Converts and pushes the current buffer to native color buffer for the driver to push to the lights.
-				SyncPush,		// Sync the display to the target frame rate.
+				Initializing,	// Clears the driver output and starts the frame cycle.
+				DrawingClear,	// Clears the drawing buffer before rendering the next frame.
+				Drawing,		// Renders the animation frame into the drawing buffer.
+				WaitingForPush,	// Waits for driver readiness and target frame time.
+				Converting,		// Converts the drawing buffer into driver output.
+				Pushing,		// Submits the completely converted frame to the driver.
 				Disabled		// Engine is disabled, no animation or buffer updates will occur.
 			};
 
 			// Internal buffer for the engine to draw to.
 			TemplateRayBuffer<Count> DrawBuffer{};
-
-			// Output native color buffer for the driver to push to the lights.
-			ColorModel::Output::component_t NativeBuffer[NativeBufferSize]{};
 
 			uint32_t LastSync = 0;
 			uint32_t AnimationTimestamp = 0;
@@ -56,20 +50,17 @@ namespace IntegerRay
 			const ColorModel::Grading::IColorGrader* Grader = nullptr;
 
 		private:
-			void ConvertGradedBuffer()
+			bool ConvertAndWriteBuffer()
 			{
-				for (uint16_t index = 0; index < Count; index++)
+				bool frameReady = true;
+				for (uint16_t index = 0; index < Count; ++index)
 				{
-					const ColorModel::Internal::color_t gradedColor = Grader->Grade(DrawBuffer.Buffer[index], index);
-					const typename format_t::color_t nativeColor = format_t::Pack(gradedColor);
-					const size_t offset = size_t(index) * format_t::CHANNEL_COUNT;
-
-					for (uint8_t channel = 0; channel < format_t::CHANNEL_COUNT; channel++)
-					{
-						const uint8_t shift = (format_t::CHANNEL_COUNT - 1 - channel) << 3;
-						NativeBuffer[offset + channel] = ColorModel::Output::component_t(nativeColor >> shift);
-					}
+					ColorModel::Internal::color_t color = DrawBuffer.Buffer[index];
+					if (Grader != nullptr)
+						color = Grader->Grade(color, index);
+					frameReady = Driver.SetPixel(index, static_cast<uint32_t>(format_t::Pack(color))) && frameReady;
 				}
+				return frameReady;
 			}
 
 		public:
@@ -140,10 +131,28 @@ namespace IntegerRay
 					if (DrawBuffer.GetCount() == Driver.GetCount()
 						&& DrawBuffer.GetCount() == Count)
 					{
-						memset(NativeBuffer, 0, sizeof(NativeBuffer));
-						Driver.PushBuffer(NativeBuffer, NativeBufferSize);
+						if (!Driver.IsReady())
+						{
+							TS::Task::delay(0);
+							break;
+						}
+
+						bool frameReady = true;
+						const uint32_t black = static_cast<uint32_t>(format_t::Pack(ColorModel::Internal::BLACK));
+						for (uint16_t index = 0; index < Count; ++index)
+							frameReady = Driver.SetPixel(index, black) && frameReady;
+						if (!frameReady)
+						{
+							TS::Task::delay(0);
+							break;
+						}
+						if (!Driver.Push())
+						{
+							TS::Task::delay(0);
+							break;
+						}
 						FrameCounter = 0;
-						State = StateEnum::BufferClear;
+						State = StateEnum::DrawingClear;
 						TS::Task::enableDelayed(0);
 						LastSync = micros() - TargetDuration;
 					}
@@ -152,45 +161,30 @@ namespace IntegerRay
 						State = StateEnum::Disabled;
 					}
 					break;
-				case StateEnum::BufferClear:
+				case StateEnum::DrawingClear:
 					// Frame start, clear the draw buffer to black/off before starting the animation.
 					DrawBuffer.Clear();
-					State = StateEnum::BufferRender;
+					State = StateEnum::Drawing;
 					AnimationTimestamp = micros();
 					TS::Task::delay(0);
 					break;
-				case StateEnum::BufferRender:
+				case StateEnum::Drawing:
 					if (Drawer != nullptr)
 					{
 						if (Drawer->OnDraw(DrawBuffer, AnimationTimestamp, FrameCounter))
 						{
-							// Drawing completed, move to next state.
-							State = StateEnum::BufferSwap;
+							State = StateEnum::WaitingForPush;
 						}
 					}
 					else
 					{
-						// No drawer set, move to next state.
-						State = StateEnum::BufferSwap;
+						State = StateEnum::WaitingForPush;
 					}
 					TS::Task::delay(0);
 					break;
-				case StateEnum::BufferSwap:
-					// Convert the animation results in the DrawBuffer to the native color buffer for the driver to push to the lights.
-					if (Grader != nullptr)
-					{
-						ConvertGradedBuffer();
-					}
-					else
-					{
-						ConvertBuffer<format_t>(DrawBuffer.Buffer, NativeBuffer, Count);
-					}
-					State = StateEnum::SyncPush;
-					TS::Task::delay(0);
-					break;
-				case StateEnum::SyncPush:
+				case StateEnum::WaitingForPush:
 				{
-					if (Driver.CanPushBuffer())
+					if (Driver.IsReady())
 					{
 						const uint32_t elapsed = micros() - LastSync;
 						if (elapsed >= TargetDuration)
@@ -205,12 +199,7 @@ namespace IntegerRay
 								LastSync += TargetDuration;
 							}
 
-							// Push the native color buffer to the lights.
-							Driver.PushBuffer(NativeBuffer, NativeBufferSize);
-							FrameCounter++;
-
-							// Frame push complete, move to next one.
-							State = StateEnum::BufferClear;
+							State = StateEnum::Converting;
 							TS::Task::delay(0);
 						}
 						else
@@ -226,6 +215,19 @@ namespace IntegerRay
 					}
 				}
 				break;
+				case StateEnum::Converting:
+					if (ConvertAndWriteBuffer())
+						State = StateEnum::Pushing;
+					TS::Task::delay(0);
+					break;
+				case StateEnum::Pushing:
+					if (Driver.Push())
+					{
+						FrameCounter++;
+						State = StateEnum::DrawingClear;
+					}
+					TS::Task::delay(0);
+					break;
 				case StateEnum::Disabled:
 				default:
 					TS::Task::disable();

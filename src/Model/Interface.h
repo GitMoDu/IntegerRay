@@ -12,9 +12,11 @@ namespace IntegerRay
 
 		virtual uint16_t GetCount() = 0;
 
-		virtual void PushBuffer(const ColorModel::Output::component_t* buffer, const size_t length) = 0;
+		virtual bool IsReady() = 0;
 
-		virtual bool CanPushBuffer() = 0;
+		virtual bool SetPixel(const uint16_t index, const uint32_t color) = 0;
+
+		virtual bool Push() = 0;
 	};
 
 	struct IRayBuffer
@@ -39,10 +41,5 @@ namespace IntegerRay
 
 		virtual bool OnDraw(IRayBuffer& buffer, const uint32_t timestamp, const uint16_t frameCounter) = 0;
 	};
-
 }
-
-
-
 #endif
-
