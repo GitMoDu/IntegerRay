@@ -3,6 +3,7 @@
 
 // IntegerRay depends on IntegerSignal https://github.com/GitMoDu/IntegerSignal
 #include <IntegerSignal.h>
+#include "Whitepoint.h"
 
 namespace IntegerRay
 {
@@ -156,6 +157,10 @@ namespace IntegerRay
 			{
 				using color_t = uint32_t;
 				static constexpr uint8_t CHANNEL_COUNT = RGBW_CHANNEL_COUNT;
+				static constexpr uint8_t RED_INDEX = 0;
+				static constexpr uint8_t GREEN_INDEX = 1;
+				static constexpr uint8_t BLUE_INDEX = 2;
+				static constexpr uint8_t WHITE_INDEX = 3;
 
 				static inline color_t Pack(const Internal::color_t color)
 				{
@@ -175,6 +180,10 @@ namespace IntegerRay
 			{
 				using color_t = uint32_t;
 				static constexpr uint8_t CHANNEL_COUNT = RGBW_CHANNEL_COUNT;
+				static constexpr uint8_t RED_INDEX = 1;
+				static constexpr uint8_t GREEN_INDEX = 0;
+				static constexpr uint8_t BLUE_INDEX = 2;
+				static constexpr uint8_t WHITE_INDEX = 3;
 
 				static inline color_t Pack(const Internal::color_t color)
 				{
@@ -194,6 +203,10 @@ namespace IntegerRay
 			{
 				using color_t = uint32_t;
 				static constexpr uint8_t CHANNEL_COUNT = RGBW_CHANNEL_COUNT;
+				static constexpr uint8_t RED_INDEX = 1;
+				static constexpr uint8_t GREEN_INDEX = 2;
+				static constexpr uint8_t BLUE_INDEX = 3;
+				static constexpr uint8_t WHITE_INDEX = 0;
 
 				static inline color_t Pack(const Internal::color_t color)
 				{
@@ -213,6 +226,10 @@ namespace IntegerRay
 			{
 				using color_t = uint32_t;
 				static constexpr uint8_t CHANNEL_COUNT = RGBW_CHANNEL_COUNT;
+				static constexpr uint8_t RED_INDEX = 2;
+				static constexpr uint8_t GREEN_INDEX = 1;
+				static constexpr uint8_t BLUE_INDEX = 3;
+				static constexpr uint8_t WHITE_INDEX = 0;
 
 				static inline color_t Pack(const Internal::color_t color)
 				{
@@ -226,6 +243,53 @@ namespace IntegerRay
 						| (blue - white);
 				}
 			};
+
+			/// <summary>RGBW output format with a compile-time Planckian white-point temperature.</summary>
+			/// <typeparam name="ChannelOrder">An RGBW output format that defines the channel order.</typeparam>
+			/// <typeparam name="Kelvin">White-channel correlated color temperature in kelvin.</typeparam>
+			template<typename ChannelOrder = Grbw, uint16_t Kelvin = Whitepoint::Temperature::DEFAULT_KELVIN>
+			struct TemplateRgbw
+			{
+				using color_t = uint32_t;
+				static constexpr uint8_t CHANNEL_COUNT = RGBW_CHANNEL_COUNT;
+
+				static_assert(ChannelOrder::CHANNEL_COUNT == RGBW_CHANNEL_COUNT,
+					"RGBW CCT conversion requires a four-channel RGBW output format.");
+
+			private:
+				static const Internal::color_t WhitePoint;
+
+			public:
+				static inline color_t Pack(const Internal::color_t color)
+				{
+					using UFraction16 = IntegerSignal::FixedPoint::ScalarFraction::UFraction16;
+					using internal_component_t = Internal::component_t;
+
+					const internal_component_t white = IntegerSignal::MinValue(
+						IntegerSignal::MinValue(
+							UFraction16::GetScalar<uint16_t>(color.red, WhitePoint.red),
+							UFraction16::GetScalar<uint16_t>(color.green, WhitePoint.green)),
+						UFraction16::GetScalar<uint16_t>(color.blue, WhitePoint.blue));
+
+					const internal_component_t red = internal_component_t(color.red - UFraction16::Fraction(white, WhitePoint.red));
+					const internal_component_t green = internal_component_t(color.green - UFraction16::Fraction(white, WhitePoint.green));
+					const internal_component_t blue = internal_component_t(color.blue - UFraction16::Fraction(white, WhitePoint.blue));
+					component_t channels[RGBW_CHANNEL_COUNT] = {};
+					channels[ChannelOrder::RED_INDEX] = Component(red);
+					channels[ChannelOrder::GREEN_INDEX] = Component(green);
+					channels[ChannelOrder::BLUE_INDEX] = Component(blue);
+					channels[ChannelOrder::WHITE_INDEX] = Component(white);
+
+					return (color_t(channels[0]) << 24)
+						| (color_t(channels[1]) << 16)
+						| (uint16_t(channels[2]) << 8)
+						| channels[3];
+				}
+			};
+
+			template<typename ChannelOrder, uint16_t Kelvin>
+			const Internal::color_t TemplateRgbw<ChannelOrder, Kelvin>::WhitePoint =
+				Whitepoint::Planckian::GetLinearRgb(Kelvin);
 
 			/// <summary>
 			/// Intensity, blue, green, red byte order with shared white removed from RGB.

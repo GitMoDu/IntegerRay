@@ -21,6 +21,10 @@ namespace IntegerRay
 			{
 				using Rgb = IntegerRay::ColorModel::Output::Grb;
 				using Rgbw = IntegerRay::ColorModel::Output::Grbw;
+
+				template<typename ChannelOrder = IntegerRay::ColorModel::Output::Grbw,
+					uint16_t Kelvin = IntegerRay::ColorModel::Whitepoint::Temperature::DEFAULT_KELVIN>
+				using TemplateRgbw = IntegerRay::ColorModel::Output::TemplateRgbw<ChannelOrder, Kelvin>;
 			}
 		}
 	}

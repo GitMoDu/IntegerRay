@@ -33,5 +33,6 @@
 #include "Model/Grading/RedBlueBalance.h"
 #include "Model/Grading/WhiteBalance.h"
 #include "Model/Grading/ColorTemperature.h"
+#include "Model/Grading/PlanckianWhitepoint.h"
 
 #endif
