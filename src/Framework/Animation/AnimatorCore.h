@@ -25,6 +25,7 @@ namespace IntegerRay
 			field_t EndValue{};
 
 			StateEnum State = StateEnum::Off;
+			bool Looping = false;
 
 			IAnimatorCurve* Curve;
 			IAnimatorLifecycleListener* LifecycleListener = nullptr;
@@ -81,6 +82,11 @@ namespace IntegerRay
 			void SetDuration(const uint32_t duration)
 			{
 				Duration = duration;
+			}
+
+			void SetLooping(const bool looping)
+			{
+				Looping = looping;
 			}
 
 			void SetStartValue(const field_t startValue)
@@ -164,7 +170,7 @@ namespace IntegerRay
 						}
 						else
 						{
-							State = StateEnum::Off;
+							State = Looping ? StateEnum::WaitingForFirstStep : StateEnum::Off;
 							OnEnd();
 						}
 					}

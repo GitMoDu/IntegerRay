@@ -54,7 +54,6 @@ namespace IntegerRay
 				*Field = startValue;
 				this->Start(endValue, startValue);
 			}
-
 		};
 
 		template<typename field_t>
