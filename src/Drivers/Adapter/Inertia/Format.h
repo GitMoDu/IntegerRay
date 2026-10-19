@@ -2,6 +2,7 @@
 #define _INTEGER_RAY_ADAPTERS_INERTIA_FORMAT_h
 
 #include <IntegerRay.h>
+#include <InertiaModel.h>
 #include <InertiaDrivers.h>
 
 namespace IntegerRay

@@ -1,10 +1,13 @@
 #ifndef _INTEGER_RAY_INERTIA_INCLUDE_h
 #define _INTEGER_RAY_INERTIA_INCLUDE_h
 
-#include "IntegerRay.h"
-#include <InertiaDrivers.h>
-
+// Color model and grading.
 #include "Drivers/Adapter/Inertia/Format.h"
+
+// LED strip drivers.
 #include "Drivers/Adapter/Inertia/StripDriver.h"
+
+// Flash/EEPROM storage journal for odometry snapshots.
+#include "Drivers/Adapter/Inertia/OdometryJournal.h"
 
 #endif
