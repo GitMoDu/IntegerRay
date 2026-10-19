@@ -31,5 +31,7 @@
 #include "Model/Grading/Contrast.h"
 #include "Model/Grading/Gamma.h"
 #include "Model/Grading/RedBlueBalance.h"
+#include "Model/Grading/WhiteBalance.h"
+#include "Model/Grading/ColorTemperature.h"
 
 #endif
