@@ -1,30 +1,40 @@
 # IntegerRay
 
-IntegerRay provides strip animation, color grading, and output-format conversion. It is a pure software library and has no dependency on hardware-driver libraries. Concrete strip transports are provided by separate libraries.
+![IntegerRay banner](media/Banner.jpg)
+
+C++11 Arduino-compatible software library for efficient RGB/RGBW LED strip animation, color grading, and integration with external addressable LED drivers, using a 15 bit-per-channel HDR internal color model.
 
 ## Driver adapters
 
-Inertia is the primary option for strip drivers. Include `IntegerRayInertia.h` to use IntegerRay with Inertia strip drivers. 
-Include `IntegerRayAdafruit.h` for Adafruit_NeoPixel-compatible drivers; 
+The library does not include hardware transports. Its optional ready-to-use strip drivers wrap transports from these libraries:
 
-The adapter is templated on the pixel object and explicit channel indices, so the selected IntegerRay output format and the pixel object's configured RGB/RGBW order must agree. Each integration header is independent and includes only its own wrapped library.
+- `IntegerRayInertia.h` provides IntegerRay drivers wrapping [Inertia](https://github.com/GitMoDu/Inertia) transports.
+- `IntegerRayAdafruit.h` provides an IntegerRay driver wrapping [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel).
+- `IntegerRayFastLED.h` provides an IntegerRay driver wrapping [FastLED](https://github.com/FastLED/FastLED) controllers.
 
-IntegerRay's existing hardware driver headers remain available during this transition; the adapters are opt-in.
+## Output conversion memory
 
-C++11 Arduino-compatible library for creating efficient animations and driving RGB/RGBW addressable LED strips across multiple embedded platforms.
+`TemplateRayEngine` takes `IntegerRay::Engine::ConversionModeEnum` as a template argument:
 
-<!-- Placeholder: README reviewed before adding adapter usage documentation. -->
+- `SeparateOutputBuffer` converts the HDR draw frame into a distinct native output frame. The HDR frame remains intact during conversion. 
+Adafruit NeoPixel requires this mode because it writes into the library-owned pixel buffer; Inertia and FastLED adapters can also use it.
+- `ReuseDrawBuffer` converts in place, overwriting and reusing the draw-buffer memory for native output. 
+This saves the separate native frame, but the HDR draw values are no longer preserved after conversion.
+It requires a driver adapter that accepts an external output frame, such as Inertia or FastLED. It is not supported by the Adafruit NeoPixel adapter.
+Size compatibility is checked at compile time so the native frame fits in the draw-buffer storage.
+
+The engine converts the completed HDR draw frame before waiting for the frame deadline and driver readiness. It pushes the converted frame after that wait. With `ReuseDrawBuffer`, the draw buffer contains native output after conversion and is cleared before the next draw frame.
+
 
 ## Features
 
-- Cooperative scheduling engine.
-- HDR internal color model (15x15x15 bits color) for interpolation and effects.
-- HDR color only converted to native strip color on last step.
-- Native addressable LED drivers: WS2812B, SK6812.
-  - AVR, STM32, RaspberryPiPico, etc... Bit-bang and SPI/DMA-based output drivers.
+- Cooperative scheduling engine based on [TaskScheduler](https://github.com/arkhipenko/TaskScheduler).
+- HDR internal color model (15x15x15 bits color) for interpolation and effects from [IntegerSignal](https://github.com/GitMoDu/IntegerSignal).
+- Compile-time choice of separate output storage or in-place draw-buffer reuse for HDR-to-native conversion.
+- Adapters for external addressable LED drivers.
 
 
 ## Example
 
-See [`examples/SimpleLight/SimpleLight.ino`](examples/SimpleLight/SimpleLight.ino) for a basic animated LED-strip setup.
+See [`examples/SimpleLight/SimpleLight.ino`](examples/SimpleLight/SimpleLight.ino) for a basic animated LED-strip setup with Adafruit, Inertia, or FastLED adapters and compile-time conversion-mode selection. `ColorBalancer` and `LedCounter` demonstrate the Inertia adapter.
 
