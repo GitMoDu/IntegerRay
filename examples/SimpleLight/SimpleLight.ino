@@ -2,7 +2,7 @@
  * IntegerRay SimpleLight
  *
    * Minimal example for driving an RGB or RGBW addressable LED strip
- * with a generated animation through an Inertia or Adafruit NeoPixel adapter.
+  * with a generated animation through a supported strip adapter.
  *
  * Required hardware:
  * - A supported Arduino-compatible board.
@@ -28,19 +28,33 @@
 
 
 // Select exactly one IntegerRay driver adapter and output format.
-#define SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB
-//#define SIMPLELIGHT_ADAPTER_ADAFRUIT_RGBW
-//#define SIMPLELIGHT_ADAPTER_INERTIA_RGB
-//#define SIMPLELIGHT_ADAPTER_INERTIA_RGBW
+#define SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB // Adafruit NeoPixel RGB driver, supports SeparateOutputBuffer only.
+//#define SIMPLELIGHT_ADAPTER_FASTLED_RGB // FastLED RGB driver, supports both conversion modes.
+//#define SIMPLELIGHT_ADAPTER_INERTIA_RGB // Inertia RGB driver, supports both conversion modes.
+//#define SIMPLELIGHT_ADAPTER_INERTIA_RGBW // Inertia RGBW driver, supports both conversion modes.
+
+// Select explicitly between separate HDR/native buffers and in-place conversion.
+#define SIMPLELIGHT_CONVERSION_SEPARATE_OUTPUT // Separate output buffer for HDR-to-native conversion, supports all drivers.
+//#define SIMPLELIGHT_CONVERSION_REUSE_DRAW // Reuse the engine's draw buffer for HDR-to-native conversion to reduce RAM usage, not supported by Adafruit NeoPixel drivers.
+
+
 
 #if (defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB) + defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGBW) \
-	+ defined(SIMPLELIGHT_ADAPTER_INERTIA_RGB) + defined(SIMPLELIGHT_ADAPTER_INERTIA_RGBW)) != 1
+	+ defined(SIMPLELIGHT_ADAPTER_INERTIA_RGB) + defined(SIMPLELIGHT_ADAPTER_INERTIA_RGBW) \
+	+ defined(SIMPLELIGHT_ADAPTER_FASTLED_RGB)) != 1
 #error Select exactly one SimpleLight adapter option.
+#endif
+
+#if (defined(SIMPLELIGHT_CONVERSION_SEPARATE_OUTPUT) + defined(SIMPLELIGHT_CONVERSION_REUSE_DRAW)) != 1
+#error Select exactly one SimpleLight conversion mode.
 #endif
 
 #if defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB) || defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGBW)
 #include <Adafruit_NeoPixel.h>
 #include <IntegerRayAdafruit.h>
+#elif defined(SIMPLELIGHT_ADAPTER_FASTLED_RGB)
+#include <FastLED.h>
+#include <IntegerRayFastLED.h>
 #else
 #include <IntegerRayInertia.h>
 #endif
@@ -80,11 +94,26 @@ using DriverType = IntegerRay::Adapters::Inertia::StripDriver<HardwareDriverType
 	LedCount>;
 HardwareDriverType HardwareStrip{};
 DriverType StripDriver(HardwareStrip);
+#elif defined(SIMPLELIGHT_ADAPTER_FASTLED_RGB)
+CRGB FastLedRegistrationPixel{};
+CLEDController* FastLedController = nullptr;
+using DriverType = IntegerRay::Adapters::FastLED::StripDriver<
+	IntegerRay::ColorModel::Output::Rgb, LedCount>;
+DriverType StripDriver{};
 #endif
 
 // Native color type determines the channel count and color layout used by the
 // animation engine. RGBW drivers allocate four channels per pixel.
 using strip_color_t = DriverType::color_t;
+
+#if defined(SIMPLELIGHT_CONVERSION_SEPARATE_OUTPUT)
+static constexpr IntegerRay::Engine::ConversionModeEnum ConversionMode = IntegerRay::Engine::ConversionModeEnum::SeparateOutputBuffer;
+#else
+static constexpr IntegerRay::Engine::ConversionModeEnum ConversionMode = IntegerRay::Engine::ConversionModeEnum::ReuseDrawBuffer;
+#endif
+
+using RayEngineType = IntegerRay::Engine::TemplateRayEngine<strip_color_t, LedCount,
+	ConversionMode, DriverType>;
 
 // Target animation update period. 10,000 microseconds is a 100 Hz target.
 static constexpr uint32_t TargetPeriodMicros = 10000;
@@ -94,10 +123,7 @@ TS::Scheduler SchedulerBase{};
 
 
 // Coordinates animation updates, rendering, and strip-buffer submission.
-IntegerRay::Engine::TemplateRayEngine<strip_color_t, LedCount> RayEngine(
-	SchedulerBase,
-	StripDriver,
-	TargetPeriodMicros);
+RayEngineType RayEngine(SchedulerBase, StripDriver, TargetPeriodMicros);
 
 SimpleAnimator Animator{};
 
@@ -106,6 +132,11 @@ inline void halt();
 
 void setup()
 {
+#if defined(SIMPLELIGHT_ADAPTER_FASTLED_RGB)
+	FastLedController = &FastLED.addLeds<WS2812B, LedPin, GRB>(&FastLedRegistrationPixel, 1);
+	StripDriver.SetController(*FastLedController);
+#endif
+
 #if defined(DEBUG)
 	// Serial output is optional and can be disabled by removing DEBUG above.
 	Serial.begin(SERIAL_BAUD_RATE);
