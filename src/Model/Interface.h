@@ -14,9 +14,23 @@ namespace IntegerRay
 
 		virtual bool IsReady() = 0;
 
-		virtual bool SetPixel(const uint16_t index, const uint32_t color) = 0;
-
 		virtual bool Push() = 0;
+	};
+
+	/// <summary>Strip driver that writes converted pixels into its own native output buffer.</summary>
+	struct IBufferedStripDriver : public IStripDriver
+	{
+		static constexpr bool HasNativeBuffer = true;
+
+		virtual bool SetPixel(const uint16_t index, const uint32_t color) = 0;
+	};
+
+	/// <summary>Strip driver that consumes a caller-owned native output frame.</summary>
+	struct IExternalBufferStripDriver : public IStripDriver
+	{
+		static constexpr bool HasNativeBuffer = false;
+
+		virtual bool SetBuffer(const uint8_t* buffer, const size_t size) = 0;
 	};
 
 	struct IRayBuffer

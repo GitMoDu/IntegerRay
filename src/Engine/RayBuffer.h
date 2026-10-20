@@ -2,9 +2,7 @@
 #define _INTEGER_RAY_ENGINE_RAY_BUFFER_h
 
 
-#define _TASK_OO_CALLBACKS
-#include <TSchedulerDeclarations.hpp>
-
+#include "../Model/Model.h"
 #include "../Model/Interface.h"
 
 

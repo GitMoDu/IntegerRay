@@ -1,7 +1,6 @@
 #ifndef _INTEGER_RAY_ADAPTERS_INERTIA_STRIP_DRIVER_h
 #define _INTEGER_RAY_ADAPTERS_INERTIA_STRIP_DRIVER_h
 
-#include <stdint.h>
 #include "../../../Model/Interface.h"
 
 namespace IntegerRay
@@ -11,18 +10,17 @@ namespace IntegerRay
 		namespace Inertia
 		{
 			template<typename Driver, typename RayFormat, typename InertiaFormat, uint16_t LedCount>
-			class StripDriver : public IntegerRay::IStripDriver
+			class StripDriver : public IntegerRay::IExternalBufferStripDriver
 			{
 			private:
 				static constexpr uint8_t ChannelCount = InertiaFormat::ChannelCount;
-				using inertia_color_t = typename InertiaFormat::color_t;
 				static_assert(RayFormat::CHANNEL_COUNT == InertiaFormat::ChannelCount,
 					"IntegerRay and Inertia strip formats must have the same channel count.");
-				static_assert(sizeof(inertia_color_t) == ChannelCount,
-					"Inertia strip colors must be tightly packed for native-buffer transfer.");
 				static_assert(LedCount > 0, "The strip must contain at least one LED.");
 
 				Driver& WrappedDriver;
+				const uint8_t* Buffer = nullptr;
+				size_t BufferSize = 0;
 
 			public:
 				using color_t = RayFormat;
@@ -51,26 +49,24 @@ namespace IntegerRay
 					WrappedDriver.Stop();
 				}
 
-				bool SetPixel(const uint16_t index, const uint32_t color) override
+				bool SetBuffer(const uint8_t* buffer, const size_t size) override
 				{
-					if (index >= LedCount || !IsReady() || WrappedDriver.GetColorCount() != LedCount)
+					if (buffer == nullptr || size != size_t(LedCount) * ChannelCount)
 						return false;
-					inertia_color_t* colors = WrappedDriver.GetColorBuffer();
-					if (colors == nullptr)
-						return false;
-					for (uint8_t channel = 0; channel < ChannelCount; ++channel)
-					{
-						const uint8_t shift = (ChannelCount - 1 - channel) << 3;
-						colors[index].Channels[channel] = static_cast<uint8_t>(color >> shift);
-					}
+					Buffer = buffer;
+					BufferSize = size;
 					return true;
 				}
 
 				bool Push() override
 				{
-					return IsReady()
-						&& WrappedDriver.GetColorCount() == LedCount
-						&& WrappedDriver.Push();
+					if (Buffer == nullptr || BufferSize != size_t(LedCount) * ChannelCount || !IsReady())
+						return false;
+					if (!WrappedDriver.Push(Buffer, BufferSize))
+						return false;
+					Buffer = nullptr;
+					BufferSize = 0;
+					return true;
 				}
 			};
 		}

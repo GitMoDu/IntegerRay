@@ -15,13 +15,13 @@ namespace IntegerRay
 			template<typename NeoPixel, typename OutputFormat, uint16_t LedCount,
 				uint8_t RedIndex, uint8_t GreenIndex, uint8_t BlueIndex,
 				int8_t WhiteIndex = -1>
-			class NeoPixelDriver : public IntegerRay::IStripDriver
+			class NeoPixelDriver : public IntegerRay::IBufferedStripDriver
 			{
 			private:
 				static constexpr uint8_t ChannelCount = OutputFormat::CHANNEL_COUNT;
 				static_assert(ChannelCount == (WhiteIndex < 0 ? 3 : 4),
 					"Output format channel count must match the selected RGB or RGBW channel indices.");
-				static_assert(RedIndex < ChannelCount && GreenIndex < ChannelCount && BlueIndex < ChannelCount,
+				static_assert(RedIndex < ChannelCount&& GreenIndex < ChannelCount&& BlueIndex < ChannelCount,
 					"RGB channel indices must be within the pixel format.");
 				static_assert(WhiteIndex < static_cast<int8_t>(ChannelCount),
 					"White channel index must be absent or within the pixel format.");
@@ -32,7 +32,31 @@ namespace IntegerRay
 				static_assert(WhiteIndex < 0 || (WhiteIndex != RedIndex && WhiteIndex != GreenIndex && WhiteIndex != BlueIndex),
 					"White channel index must not overlap RGB channels.");
 
+				using pixel_format_tag_t = typename IntegerSignal::TypeTraits::TypeConditional::conditional_type<
+					IntegerSignal::TypeTraits::TypeDispatch::TrueType,
+					IntegerSignal::TypeTraits::TypeDispatch::FalseType,
+					(WhiteIndex < 0)>::type;
+
 				NeoPixel& Strip;
+
+				void WritePixel(const uint16_t index, const uint32_t color,
+					IntegerSignal::TypeTraits::TypeDispatch::TrueType)
+				{
+					const uint8_t red = static_cast<uint8_t>(color >> ((ChannelCount - 1 - RedIndex) << 3));
+					const uint8_t green = static_cast<uint8_t>(color >> ((ChannelCount - 1 - GreenIndex) << 3));
+					const uint8_t blue = static_cast<uint8_t>(color >> ((ChannelCount - 1 - BlueIndex) << 3));
+					Strip.setPixelColor(index, red, green, blue);
+				}
+
+				void WritePixel(const uint16_t index, const uint32_t color,
+					IntegerSignal::TypeTraits::TypeDispatch::FalseType)
+				{
+					const uint8_t red = static_cast<uint8_t>(color >> ((ChannelCount - 1 - RedIndex) << 3));
+					const uint8_t green = static_cast<uint8_t>(color >> ((ChannelCount - 1 - GreenIndex) << 3));
+					const uint8_t blue = static_cast<uint8_t>(color >> ((ChannelCount - 1 - BlueIndex) << 3));
+					const uint8_t white = static_cast<uint8_t>(color >> ((ChannelCount - 1 - WhiteIndex) << 3));
+					Strip.setPixelColor(index, red, green, blue, white);
+				}
 
 			public:
 				using color_t = OutputFormat;
@@ -60,16 +84,7 @@ namespace IntegerRay
 				{
 					if (index >= LedCount || Strip.numPixels() != LedCount)
 						return false;
-					const uint8_t red = static_cast<uint8_t>(color >> ((ChannelCount - 1 - RedIndex) << 3));
-					const uint8_t green = static_cast<uint8_t>(color >> ((ChannelCount - 1 - GreenIndex) << 3));
-					const uint8_t blue = static_cast<uint8_t>(color >> ((ChannelCount - 1 - BlueIndex) << 3));
-					if (WhiteIndex < 0)
-						Strip.setPixelColor(index, red, green, blue);
-					else
-					{
-						const uint8_t white = static_cast<uint8_t>(color >> ((ChannelCount - 1 - WhiteIndex) << 3));
-						Strip.setPixelColor(index, red, green, blue, white);
-					}
+					WritePixel(index, color, pixel_format_tag_t{});
 					return true;
 				}
 

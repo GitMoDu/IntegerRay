@@ -1,6 +1,7 @@
 #ifndef _INTEGER_RAY_MODEL_WHITEPOINT_h
 #define _INTEGER_RAY_MODEL_WHITEPOINT_h
 
+// IntegerRay depends on IntegerSignal https://github.com/GitMoDu/IntegerSignal
 #include <IntegerSignal.h>
 
 namespace IntegerRay
