@@ -27,21 +27,25 @@
 #include <TScheduler.hpp>
 
 
-// Select exactly one IntegerRay driver adapter and output format.
-#define SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB // Adafruit NeoPixel RGB driver, supports SeparateOutputBuffer only.
-//#define SIMPLELIGHT_ADAPTER_FASTLED_RGB // FastLED RGB driver, supports both conversion modes.
-//#define SIMPLELIGHT_ADAPTER_INERTIA_RGB // Inertia RGB driver, supports both conversion modes.
-//#define SIMPLELIGHT_ADAPTER_INERTIA_RGBW // Inertia RGBW driver, supports both conversion modes.
+// Select exactly one adapter, chipset, and output format combination. 
+//#define SIMPLELIGHT_ADAPTER_ADAFRUIT_WS2812B_RGB // Adafruit NeoPixel WS2812B RGB driver, supports SeparateOutputBuffer only.
+//#define SIMPLELIGHT_ADAPTER_ADAFRUIT_SK6812_RGBW // Adafruit NeoPixel SK6812 RGBW driver, supports SeparateOutputBuffer only.
+//#define SIMPLELIGHT_ADAPTER_FASTLED_WS2812B_RGB // FastLED WS2812B RGB driver, supports both conversion modes.
+//#define SIMPLELIGHT_ADAPTER_NEOPIXELBUS_WS2812B_RGB // NeoPixelBus WS2812B RGB driver, supports SeparateOutputBuffer only.
+//#define SIMPLELIGHT_ADAPTER_NEOPIXELBUS_SK6812_RGBW // NeoPixelBus SK6812 RGBW driver, supports SeparateOutputBuffer only.
+#define SIMPLELIGHT_ADAPTER_INERTIA_WS2812B_RGB // Inertia WS2812B RGB driver, supports both conversion modes.
+//#define SIMPLELIGHT_ADAPTER_INERTIA_SK6812_RGBW // Inertia SK6812 RGBW driver, supports both conversion modes.
 
-// Select explicitly between separate HDR/native buffers and in-place conversion.
+// Select explicitly between separate HDR/native buffers and in-place conversion. Not all drivers support in-place conversion.
 #define SIMPLELIGHT_CONVERSION_SEPARATE_OUTPUT // Separate output buffer for HDR-to-native conversion, supports all drivers.
-//#define SIMPLELIGHT_CONVERSION_REUSE_DRAW // Reuse the engine's draw buffer for HDR-to-native conversion to reduce RAM usage, not supported by Adafruit NeoPixel drivers.
+//#define SIMPLELIGHT_CONVERSION_REUSE_DRAW // Reuse the engine's draw buffer for HDR-to-native conversion to reduce RAM usage; not supported by Adafruit NeoPixel or NeoPixelBus drivers.
 
 
 
-#if (defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB) + defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGBW) \
-	+ defined(SIMPLELIGHT_ADAPTER_INERTIA_RGB) + defined(SIMPLELIGHT_ADAPTER_INERTIA_RGBW) \
-	+ defined(SIMPLELIGHT_ADAPTER_FASTLED_RGB)) != 1
+#if (defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_WS2812B_RGB) + defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_SK6812_RGBW) \
+	+ defined(SIMPLELIGHT_ADAPTER_INERTIA_WS2812B_RGB) + defined(SIMPLELIGHT_ADAPTER_INERTIA_SK6812_RGBW) \
+	+ defined(SIMPLELIGHT_ADAPTER_FASTLED_WS2812B_RGB) \
+	+ defined(SIMPLELIGHT_ADAPTER_NEOPIXELBUS_WS2812B_RGB) + defined(SIMPLELIGHT_ADAPTER_NEOPIXELBUS_SK6812_RGBW)) != 1
 #error Select exactly one SimpleLight adapter option.
 #endif
 
@@ -49,14 +53,20 @@
 #error Select exactly one SimpleLight conversion mode.
 #endif
 
-#if defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB) || defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGBW)
+#if defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_WS2812B_RGB) || defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_SK6812_RGBW)
 #include <Adafruit_NeoPixel.h>
 #include <IntegerRayAdafruit.h>
-#elif defined(SIMPLELIGHT_ADAPTER_FASTLED_RGB)
+#elif defined(SIMPLELIGHT_ADAPTER_FASTLED_WS2812B_RGB)
 #include <FastLED.h>
 #include <IntegerRayFastLED.h>
+#elif defined(SIMPLELIGHT_ADAPTER_NEOPIXELBUS_WS2812B_RGB) || defined(SIMPLELIGHT_ADAPTER_NEOPIXELBUS_SK6812_RGBW)
+#include <IntegerRayNeoPixelBus.h>
 #else
 #include <IntegerRayInertia.h>
+#endif
+
+#if defined(SIMPLELIGHT_ADAPTER_INERTIA_SK6812_RGBW) && defined(ARDUINO_ARCH_STM32F1)
+#include <SPI.h>
 #endif
 
 #include "SimpleAnimator.h"
@@ -66,40 +76,73 @@ static constexpr uint16_t LedCount = 15;
 
 // Data output pin used by bit-bang drivers. DMA/SPI drivers use the selected
 // SPI peripheral's MOSI pin instead.
-static constexpr uint8_t LedPin = 11;
+static constexpr uint8_t LedPin = 2;
 
-#if defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGB)
+#if defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_WS2812B_RGB)
 using DriverType = IntegerRay::Adapters::Adafruit::NeoPixelDriver<
 	Adafruit_NeoPixel, IntegerRay::ColorModel::Output::Grb, LedCount, 1, 0, 2>;
 Adafruit_NeoPixel HardwareStrip(LedCount, LedPin, NEO_GRB + NEO_KHZ800);
 DriverType StripDriver(HardwareStrip);
-#elif defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_RGBW)
+#elif defined(SIMPLELIGHT_ADAPTER_ADAFRUIT_SK6812_RGBW)
 using DriverType = IntegerRay::Adapters::Adafruit::NeoPixelDriver<
 	Adafruit_NeoPixel, IntegerRay::ColorModel::Output::Grbw, LedCount, 1, 0, 2, 3>;
 Adafruit_NeoPixel HardwareStrip(LedCount, LedPin, NEO_GRBW + NEO_KHZ800);
 DriverType StripDriver(HardwareStrip);
-#elif defined(SIMPLELIGHT_ADAPTER_INERTIA_RGB)
-using HardwareDriverType = Inertia::Drivers::Light::LedStrip::Ws2812b::Avr::BitBangDriver<LedPin, LedCount>;
+#elif defined(SIMPLELIGHT_ADAPTER_NEOPIXELBUS_WS2812B_RGB)
+using HardwareDriverType = NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod>;
+using DriverType = IntegerRay::Adapters::NeoPixelBus::StripDriver<
+	HardwareDriverType, RgbColor, IntegerRay::ColorModel::Output::Grb, LedCount, 1, 0, 2>;
+HardwareDriverType HardwareStrip(LedCount, LedPin);
+DriverType StripDriver(HardwareStrip);
+#elif defined(SIMPLELIGHT_ADAPTER_NEOPIXELBUS_SK6812_RGBW)
+using HardwareDriverType = NeoPixelBus<NeoGrbwFeature, Neo800KbpsMethod>;
+using DriverType = IntegerRay::Adapters::NeoPixelBus::StripDriver<
+	HardwareDriverType, RgbwColor, IntegerRay::ColorModel::Output::Grbw, LedCount, 1, 0, 2, 3>;
+HardwareDriverType HardwareStrip(LedCount, LedPin);
+DriverType StripDriver(HardwareStrip);
+#elif defined(SIMPLELIGHT_ADAPTER_INERTIA_WS2812B_RGB)
+#if defined(ARDUINO_ARCH_AVR)
+using HardwareDriverType = Inertia::Drivers::Light::LedStrip::Ws2812b::Avr::SpiDriver<LedCount>;
+#elif defined(ARDUINO_ARCH_RP2040)
+using HardwareDriverType = Inertia::Drivers::Light::LedStrip::Ws2812b::RaspberryPiPico::PioDriver<LedPin, LedCount>;
+#else
+#error "SimpleLight Inertia WS2812B supports AVR SPI and RP2040/RP2350 PIO only."
+#endif
 using DriverType = IntegerRay::Adapters::Inertia::StripDriver<HardwareDriverType,
 	IntegerRay::Adapters::Inertia::IntegerRayFormat::Rgb,
 	Inertia::Drivers::Light::LedStrip::Ws2812b::OutputFormat::Grb,
 	LedCount>;
 HardwareDriverType HardwareStrip{};
 DriverType StripDriver(HardwareStrip);
-#elif defined(SIMPLELIGHT_ADAPTER_INERTIA_RGBW)
-using HardwareDriverType = Inertia::Drivers::Light::LedStrip::Sk6812::Avr::BitBangRgbwDriver<LedPin, LedCount>;
+#elif defined(SIMPLELIGHT_ADAPTER_INERTIA_SK6812_RGBW)
+#if defined(ARDUINO_ARCH_AVR)
+using HardwareDriverType = Inertia::Drivers::Light::LedStrip::Sk6812::Avr::SpiRgbwDriver<LedCount>;
+#elif defined(ARDUINO_ARCH_STM32F1)
+using HardwareDriverType = Inertia::Drivers::Light::LedStrip::Sk6812::Stm32::SpiDmaRgbwDriver<LedCount>;
+#elif defined(ARDUINO_ARCH_STM32)
+using HardwareDriverType = Inertia::Drivers::Light::LedStrip::Sk6812::Stm32::BitBangRgbwDriver<LedPin, LedCount>;
+#else
+#error "SimpleLight Inertia SK6812 supports AVR SPI and STM32/Maple drivers only."
+#endif
 using DriverType = IntegerRay::Adapters::Inertia::StripDriver<HardwareDriverType,
-	IntegerRay::Adapters::Inertia::IntegerRayFormat::Rgbw,
+	IntegerRay::Adapters::Inertia::IntegerRayFormat::TemplateRgbw<>,
 	IntegerRay::Adapters::Inertia::OutputFormat::Rgbw,
 	LedCount>;
 HardwareDriverType HardwareStrip{};
 DriverType StripDriver(HardwareStrip);
-#elif defined(SIMPLELIGHT_ADAPTER_FASTLED_RGB)
+#elif defined(SIMPLELIGHT_ADAPTER_FASTLED_WS2812B_RGB)
 CRGB FastLedRegistrationPixel{};
 CLEDController* FastLedController = nullptr;
 using DriverType = IntegerRay::Adapters::FastLED::StripDriver<
 	IntegerRay::ColorModel::Output::Rgb, LedCount>;
 DriverType StripDriver{};
+#endif
+
+#if defined(SIMPLELIGHT_ADAPTER_INERTIA_SK6812_RGBW) && defined(ARDUINO_ARCH_STM32F1)
+void OnStripTransmitComplete()
+{
+	HardwareStrip.HandleTransmitComplete();
+}
 #endif
 
 // Native color type determines the channel count and color layout used by the
@@ -132,7 +175,12 @@ inline void halt();
 
 void setup()
 {
-#if defined(SIMPLELIGHT_ADAPTER_FASTLED_RGB)
+#if defined(SIMPLELIGHT_ADAPTER_INERTIA_SK6812_RGBW) && defined(ARDUINO_ARCH_STM32F1)
+	SPI.end();
+	SPI.onTransmit(OnStripTransmitComplete);
+#endif
+
+#if defined(SIMPLELIGHT_ADAPTER_FASTLED_WS2812B_RGB)
 	FastLedController = &FastLED.addLeds<WS2812B, LedPin, GRB>(&FastLedRegistrationPixel, 1);
 	StripDriver.SetController(*FastLedController);
 #endif
