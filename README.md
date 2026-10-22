@@ -11,16 +11,17 @@ The library does not include hardware transports. Its optional ready-to-use stri
 - `IntegerRayInertia.h` provides IntegerRay drivers wrapping [Inertia](https://github.com/GitMoDu/Inertia) transports.
 - `IntegerRayAdafruit.h` provides an IntegerRay driver wrapping [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel).
 - `IntegerRayFastLED.h` provides an IntegerRay driver wrapping [FastLED](https://github.com/FastLED/FastLED) controllers.
+- `IntegerRayNeoPixelBus.h` provides an IntegerRay driver wrapping [NeoPixelBus](https://github.com/Makuna/NeoPixelBus).
 
 ## Output conversion memory
 
 `TemplateRayEngine` takes `IntegerRay::Engine::ConversionModeEnum` as a template argument:
 
 - `SeparateOutputBuffer` converts the HDR draw frame into a distinct native output frame. The HDR frame remains intact during conversion. 
-Adafruit NeoPixel requires this mode because it writes into the library-owned pixel buffer; Inertia and FastLED adapters can also use it.
+Adafruit NeoPixel and NeoPixelBus require this mode because they write into library-owned pixel buffers; Inertia and FastLED adapters can also use it.
 - `ReuseDrawBuffer` converts in place, overwriting and reusing the draw-buffer memory for native output. 
 This saves the separate native frame, but the HDR draw values are no longer preserved after conversion.
-It requires a driver adapter that accepts an external output frame, such as Inertia or FastLED. It is not supported by the Adafruit NeoPixel adapter.
+It requires a driver adapter that accepts an external output frame, such as Inertia or FastLED. It is not supported by the Adafruit NeoPixel or NeoPixelBus adapters.
 Size compatibility is checked at compile time so the native frame fits in the draw-buffer storage.
 
 The engine converts the completed HDR draw frame before waiting for the frame deadline and driver readiness. It pushes the converted frame after that wait. With `ReuseDrawBuffer`, the draw buffer contains native output after conversion and is cleared before the next draw frame.
@@ -36,5 +37,7 @@ The engine converts the completed HDR draw frame before waiting for the frame de
 
 ## Example
 
-See [`examples/SimpleLight/SimpleLight.ino`](examples/SimpleLight/SimpleLight.ino) for a basic animated LED-strip setup with Adafruit, Inertia, or FastLED adapters and compile-time conversion-mode selection. `ColorBalancer` and `LedCounter` demonstrate the Inertia adapter.
+See [`examples/SimpleLight/SimpleLight.ino`](examples/SimpleLight/SimpleLight.ino) for a basic animated LED-strip setup with Adafruit, Inertia, FastLED, or NeoPixelBus adapters and compile-time conversion-mode selection. `ColorBalancer` and `LedCounter` demonstrate the Inertia adapter.
+
+For NeoPixelBus, include `IntegerRayNeoPixelBus.h` and instantiate `IntegerRay::Adapters::NeoPixelBus::StripDriver` with the NeoPixelBus type, its pixel color type (`RgbColor` or `RgbwColor`), IntegerRay output format, pixel count, and the red/green/blue/white byte indices in that output format. For example, a GRB RGB strip uses `RgbColor`, `IntegerRay::ColorModel::Output::Grb`, and channel indices `1, 0, 2`. Call `Setup()` before starting the engine and use `SeparateOutputBuffer` conversion mode.
 
