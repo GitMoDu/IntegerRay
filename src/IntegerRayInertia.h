@@ -7,7 +7,4 @@
 // LED strip drivers.
 #include "Drivers/Adapter/Inertia/StripDriver.h"
 
-// Flash/EEPROM storage journal for odometry snapshots.
-#include "Drivers/Adapter/Inertia/OdometryJournal.h"
-
 #endif
