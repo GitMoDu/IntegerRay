@@ -37,7 +37,5 @@ The engine converts the completed HDR draw frame before waiting for the frame de
 
 ## Example
 
-See [`examples/SimpleLight/SimpleLight.ino`](examples/SimpleLight/SimpleLight.ino) for a basic animated LED-strip setup with Adafruit, Inertia, FastLED, or NeoPixelBus adapters and compile-time conversion-mode selection. `ColorBalancer` and `LedCounter` demonstrate the Inertia adapter.
-
-For NeoPixelBus, include `IntegerRayNeoPixelBus.h` and instantiate `IntegerRay::Adapters::NeoPixelBus::StripDriver` with the NeoPixelBus type, its pixel color type (`RgbColor` or `RgbwColor`), IntegerRay output format, pixel count, and the red/green/blue/white byte indices in that output format. For example, a GRB RGB strip uses `RgbColor`, `IntegerRay::ColorModel::Output::Grb`, and channel indices `1, 0, 2`. Call `Setup()` before starting the engine and use `SeparateOutputBuffer` conversion mode.
+See [`examples/SimpleLight/SimpleLight.ino`](examples/SimpleLight/SimpleLight.ino) for a basic animated LED-strip setup with Adafruit, Inertia, FastLED, or NeoPixelBus adapters and compile-time conversion-mode selection.
 
